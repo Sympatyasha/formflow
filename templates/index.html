@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FormFlow — автозаполнение опросов</title>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;700&amp;family=Syne:wght@400;700;800&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f0e0d;
+  --paper: #f5f2ee;
+  --accent: #e84f2b;
+  --accent2: #2b6be8;
+  --muted: #8a8680;
+  --card: #eeebe6;
+  --border: #d4d0ca;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Onest', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.5;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 4rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: rgba(245,242,238,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.logo span { color: var(--accent); }
+
+nav ul {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+
+nav ul a {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+nav ul a:hover { color: var(--ink); }
+
+.nav-cta {
+  background: var(--ink);
+  color: var(--paper) !important;
+  padding: 0.5rem 1.25rem;
+  border-radius: 100px;
+  font-weight: 500 !important;
+  transition: background 0.2s !important;
+}
+
+.nav-cta:hover { background: var(--accent) !important; color: white !important; }
+
+.hero {
+  min-height: 90vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 4rem;
+  padding: 6rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '50×';
+  position: absolute;
+  right: -2rem;
+  top: 50%;
+  transform: translateY(-60%) rotate(-8deg);
+  font-family: 'Syne', sans-serif;
+  font-size: 18rem;
+  font-weight: 800;
+  color: var(--border);
+  pointer-events: none;
+  line-height: 1;
+  z-index: 0;
+}
+
+.hero-left { position: relative; z-index: 1; }
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.85rem;
+  border-radius: 100px;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.1s forwards;
+}
+
+.hero-tag::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.2s forwards;
+}
+
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+  position: relative;
+}
+
+h1 em::after {
+  content: '';
+  position: absolute;
+  bottom: 0.05em;
+  left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.hero-desc {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 44ch;
+  margin-bottom: 2.5rem;
+  font-weight: 300;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.3s forwards;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.4s forwards;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.875rem 2rem;
+  border-radius: 100px;
+  font-family: 'Onest', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+  display: inline-block;
+}
+
+.btn-primary:hover { background: var(--accent); transform: translateY(-1px); }
+
+.btn-secondary {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: gap 0.2s;
+}
+
+.btn-secondary:hover { gap: 0.7rem; }
+
+.hero-right {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  animation: fadeLeft 0.7s 0.5s forwards;
+}
+
+.form-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(15,14,13,0.1);
+  position: relative;
+}
+
+.form-card::before {
+  content: 'FormFlow';
+  position: absolute;
+  top: -0.7rem;
+  left: 2rem;
+  background: var(--accent);
+  color: white;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.75rem;
+  border-radius: 100px;
+}
+
+.form-field {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-family: 'Onest', sans-serif;
+  font-size: 0.9rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus { border-color: var(--accent2); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.platform-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.platform-btn {
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-family: 'Onest', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  color: var(--muted);
+}
+
+.platform-btn.active {
+  background: var(--ink);
+  color: white;
+  border-color: var(--ink);
+}
+
+.submit-btn {
+  width: 100%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.875rem;
+  font-family: 'Onest', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.submit-btn:hover { background: #c93d1e; transform: translateY(-1px); }
+
+.progress-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  display: none;
+}
+
+.progress-section.visible { display: block; }
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.progress-track {
+  height: 6px;
+  background: var(--card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-item {
+  padding: 2.5rem 4rem;
+  border-right: 1px solid var(--border);
+  opacity: 0;
+  animation: fadeUp 0.5s forwards;
+}
+
+.stat-item:last-child { border-right: none; }
+.stat-item:nth-child(1) { animation-delay: 0.1s; }
+.stat-item:nth-child(2) { animation-delay: 0.2s; }
+.stat-item:nth-child(3) { animation-delay: 0.3s; }
+
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.4rem;
+}
+
+.stat-num span { color: var(--accent); }
+
+.stat-desc {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.section {
+  padding: 6rem 4rem;
+}
+
+.section-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 3rem;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.step {
+  padding: 2.5rem;
+  border-right: 1px solid var(--border);
+  position: relative;
+  transition: background 0.2s;
+}
+
+.step:last-child { border-right: none; }
+.step:hover { background: var(--card); }
+
+.step-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--border);
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.step-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.step-desc {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.step-icon {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  width: 36px;
+  height: 36px;
+  background: var(--ink);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.pricing {
+  padding: 6rem 4rem;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pricing h2 { color: var(--paper); margin-bottom: 3rem; }
+.pricing .section-tag { color: var(--accent); }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.price-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 2.5rem;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.price-card:hover {
+  border-color: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.07);
+}
+
+.price-card.featured {
+  border-color: var(--accent);
+  background: rgba(232,79,43,0.08);
+}
+
+.price-card.featured::before {
+  content: 'Популярный';
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+}
+
+.price-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.price-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.price-period {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 2rem;
+  font-weight: 300;
+}
+
+.price-features {
+  list-style: none;
+  margin-bottom: 2rem;
+}
+
+.price-features li {
+  font-size: 0.875rem;
+  color: rgba(245,242,238,0.7);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 300;
+}
+
+.price-features li::before {
+  content: '—';
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.price-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: var(--paper);
+  font-family: 'Onest', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.price-btn:hover, .price-card.featured .price-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.faq { padding: 6rem 4rem; }
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.faq-item {
+  background: var(--paper);
+  padding: 2rem 2.5rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.faq-item:hover { background: var(--card); }
+
+.faq-q {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.faq-q::after {
+  content: '+';
+  font-size: 1.2rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  line-height: 1.2;
+  transition: transform 0.2s;
+}
+
+.faq-item.open .faq-q::after { transform: rotate(45deg); }
+
+.faq-a {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.7;
+  font-weight: 300;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-item.open .faq-a { max-height: 200px; }
+
+.footer-cta {
+  margin: 0 4rem 4rem;
+  background: var(--accent);
+  border-radius: 20px;
+  padding: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.footer-cta h2 { color: white; margin-bottom: 0; font-size: 2.5rem; }
+.footer-cta p { color: rgba(255,255,255,0.75); margin-top: 0.5rem; font-weight: 300; }
+
+.btn-white {
+  background: white;
+  color: var(--accent);
+  padding: 0.875rem 2rem;
+  border-radius: 100px;
+  font-family: 'Onest', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+.btn-white:hover { transform: translateY(-2px); }
+
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem 4rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeLeft {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 900px) {
+  nav { padding: 1.2rem 1.5rem; }
+  nav ul { display: none; }
+  .hero { grid-template-columns: 1fr; padding: 3rem 1.5rem; min-height: auto; }
+  .hero::after { display: none; }
+  .stats-bar { grid-template-columns: 1fr; }
+  .stat-item { border-right: none; border-bottom: 1px solid var(--border); padding: 2rem 1.5rem; }
+  .section, .faq, .pricing { padding: 4rem 1.5rem; }
+  .steps { grid-template-columns: 1fr 1fr; }
+  .step { border-bottom: 1px solid var(--border); }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .faq-grid { grid-template-columns: 1fr; }
+  .footer-cta { margin: 0 1.5rem 2rem; padding: 2.5rem; flex-direction: column; }
+  footer { padding: 1.5rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo">Form<span>Flow</span></a>
+  <ul>
+    <li><a href="#how">Как работает</a></li>
+    <li><a href="#pricing">Цены</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#start" class="nav-cta">Попробовать</a></li>
+  </ul>
+</nav>
+
+<section class="hero" id="start">
+  <div class="hero-left">
+    <div class="hero-tag">Для студентов PR и рекламы</div>
+    <h1>Набери нужное количество<br><em>ответов</em> на опрос</h1>
+    <p class="hero-desc">Вставь ссылку на Google Forms или Яндекс Формы — сервис автоматически заполнит её нужное количество раз с реалистичными ответами.</p>
+    <div class="hero-actions">
+      <a href="#start" class="btn-primary">Запустить бесплатно →</a>
+      <a href="#how" class="btn-secondary">Как это работает <span>↓</span></a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="form-card">
+      <div class="form-field">
+        <label class="form-label">Ссылка на форму</label>
+        <input class="form-input" type="url" placeholder="https://forms.yandex.ru/..." id="urlInput">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Платформа</label>
+        <div class="platform-toggle">
+          <button class="platform-btn active" data-platform="yandex">Яндекс Формы</button>
+          <button class="platform-btn" data-platform="google">Google Forms</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Прохождений</label>
+          <input class="form-input" type="number" value="50" min="1" max="500" id="countInput">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Профиль</label>
+          <select class="form-input" id="profileInput">
+            <option value="students">Студенты 18–24</option>
+            <option value="adults">Взрослые 25–45</option>
+            <option value="mixed">Смешанный</option>
+          </select>
+        </div>
+      </div>
+      <button class="submit-btn" id="startBtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L8 14M2 8L14 8" stroke="white" stroke-width="2" stroke-linecap="round"></path></svg>
+        Запустить
+      </button>
+      <div class="progress-section" id="progressSection">
+        <div class="progress-label">
+          <span style="font-size:0.8rem;color:var(--muted)">Прогресс</span>
+          <span style="font-size:0.8rem;font-weight:500" id="progressLabel">0 / 50</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num">2 400<span>+</span></div>
+    <div class="stat-desc">опросов заполнено</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span>~</span>8 мин</div>
+    <div class="stat-desc">среднее время на 50 ответов</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">2</div>
+    <div class="stat-desc">платформы: Яндекс и Google</div>
+  </div>
+</div>
+
+<section class="section" id="how">
+  <div class="section-tag">Как это работает</div>
+  <h2>Четыре шага<br>до готового опроса</h2>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-icon">🔗</div>
+      <div class="step-title">Вставь ссылку</div>
+      <div class="step-desc">Скопируй URL своей Google Forms или Яндекс Формы и вставь в поле выше.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-icon">⚙️</div>
+      <div class="step-title">Настрой параметры</div>
+      <div class="step-desc">Выбери количество прохождений, профиль аудитории и желаемые ответы.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-icon">🤖</div>
+      <div class="step-title">Наш сервер работает</div>
+      <div class="step-desc">Браузер на нашем сервере открывает форму и заполняет её с реалистичными задержками.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-icon">✅</div>
+      <div class="step-title">Получи результат</div>
+      <div class="step-desc">Все ответы появятся в твоей форме. Смотри прогресс в реальном времени.</div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="section-tag">Цены</div>
+  <h2>Просто и честно</h2>
+  <div class="pricing-grid reveal">
+    <div class="price-card">
+      <div class="price-name">Старт</div>
+      <div class="price-amount">Бесплатно</div>
+      <div class="price-period">10 прохождений в месяц</div>
+      <ul class="price-features">
+        <li>Google Forms и Яндекс Формы</li>
+        <li>До 10 прохождений</li>
+        <li>Базовые профили аудитории</li>
+        <li>Стандартная скорость</li>
+      </ul>
+      <button class="price-btn">Начать бесплатно</button>
+    </div>
+    <div class="price-card featured">
+      <div class="price-name">Студент</div>
+      <div class="price-amount">299 ₽</div>
+      <div class="price-period">разовая покупка, навсегда</div>
+      <ul class="price-features">
+        <li>До 500 прохождений</li>
+        <li>Настройка ответов по вопросам</li>
+        <li>Реалистичные задержки</li>
+        <li>Приоритетная скорость</li>
+        <li>История запусков</li>
+      </ul>
+      <button class="price-btn">Купить за 299 ₽</button>
+    </div>
+    <div class="price-card">
+      <div class="price-name">Группа</div>
+      <div class="price-amount">799 ₽</div>
+      <div class="price-period">на 5 пользователей</div>
+      <ul class="price-features">
+        <li>5 аккаунтов студентов</li>
+        <li>Безлимитные прохождения</li>
+        <li>Управление командой</li>
+        <li>Приоритетная поддержка</li>
+        <li>Экспорт статистики</li>
+      </ul>
+      <button class="price-btn">Купить за 799 ₽</button>
+    </div>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="section-tag">Вопросы и ответы</div>
+  <h2>Часто спрашивают</h2>
+  <div class="faq-grid reveal">
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Это безопасно для моей формы?</div>
+      <div class="faq-a">Да. Мы не удаляем и не изменяем существующие ответы. Каждое прохождение добавляет новую строку — как если бы проголосовал живой человек.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Ответы выглядят реальными?</div>
+      <div class="faq-a">Да. Сервис использует случайные задержки между кликами, имитирует скорость печати живого человека и каждый раз создаёт новую сессию браузера.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Сколько времени занимает 50 прохождений?</div>
+      <div class="faq-a">Около 8–15 минут. Мы специально делаем паузы между ответами, чтобы они выглядели естественно. Ты получишь уведомление когда всё готово.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Работает ли с закрытыми формами?</div>
+      <div class="faq-a">Только с публично доступными формами. Если форма требует авторизацию через корпоративный аккаунт — не сработает. Обычные учебные опросы всегда открыты.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Можно настроить конкретные ответы?</div>
+      <div class="faq-a">Да, в плане «Студент» и выше. Можно указать для каждого вопроса предпочтительные варианты — сервис будет выбирать именно их.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Как происходит оплата?</div>
+      <div class="faq-a">Через ЮKassa — карта, СБП, ЮMoney. Доступ открывается мгновенно после оплаты. Никакой подписки — платишь один раз.</div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-cta reveal">
+  <div>
+    <h2>Готов попробовать?</h2>
+    <p>Первые 10 прохождений — бесплатно. Без карты.</p>
+  </div>
+  <a href="#start" class="btn-white">Запустить сейчас →</a>
+</div>
+
+<footer>
+  <span>© 2025 FormFlow</span>
+  <span>Сделано для студентов PR и рекламы</span>
+  <span>Поддержка: help@formflow.ru</span>
+</footer>
+
+<script>
+// ----- Переключение платформы -----
+function selectPlatform(btn) {
+  document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+document.querySelectorAll('.platform-btn').forEach(btn => {
+  btn.addEventListener('click', () => selectPlatform(btn));
+});
+
+// ----- Работа с реальным API -----
+let currentTaskId = null;
+let progressInterval = null;
+
+async function startRealTask() {
+  const urlInput = document.getElementById('urlInput');
+  const url = urlInput.value.trim();
+  if (!url) {
+    alert('Введите ссылку на форму');
+    return;
+  }
+  if (!url.startsWith('http')) {
+    alert('Ссылка должна начинаться с http:// или https://');
+    return;
+  }
+
+  const count = parseInt(document.getElementById('countInput').value);
+  if (isNaN(count) || count < 1 || count > 500) {
+    alert('Количество прохождений должно быть от 1 до 500');
+    return;
+  }
+
+  const activePlatformBtn = document.querySelector('.platform-btn.active');
+  let platform = activePlatformBtn.getAttribute('data-platform');
+  if (!platform) {
+    platform = activePlatformBtn.innerText.includes('Яндекс') ? 'yandex' : 'google';
+  }
+
+  const profileSelect = document.getElementById('profileInput');
+  let profile = profileSelect.value;
+  if (!profile) {
+    const profileText = profileSelect.options[profileSelect.selectedIndex]?.value;
+    profile = profileText === 'Студенты 18–24' ? 'students' : (profileText === 'Взрослые 25–45' ? 'adults' : 'mixed');
+  }
+
+  const progressSection = document.getElementById('progressSection');
+  progressSection.classList.add('visible');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  progressFill.style.width = '0%';
+  progressLabel.textContent = `0 / ${count}`;
+
+  try {
+    const response = await fetch('/api/task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: url,
+        platform: platform,
+        count: count,
+        profile: profile,
+        answers: {}
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.detail || 'Ошибка сервера');
+    }
+
+    const task = await response.json();
+    currentTaskId = task.task_id;
+
+    if (progressInterval) clearInterval(progressInterval);
+    progressInterval = setInterval(async () => {
+      try {
+        const statusRes = await fetch(`/api/task/${currentTaskId}`);
+        if (!statusRes.ok) {
+          clearInterval(progressInterval);
+          alert('Ошибка получения статуса');
+          return;
+        }
+        const status = await statusRes.json();
+        progressFill.style.width = `${status.percent}%`;
+        progressLabel.textContent = `${status.done} / ${status.total}`;
+        
+        if (status.status === 'done') {
+          clearInterval(progressInterval);
+          alert('✅ Готово! Все ответы успешно отправлены.');
+          progressSection.classList.remove('visible');
+          currentTaskId = null;
+        } else if (status.status === 'error') {
+          clearInterval(progressInterval);
+          alert(`❌ Ошибка: ${status.error || 'Неизвестная ошибка'}`);
+          progressSection.classList.remove('visible');
+          currentTaskId = null;
+        } else if (status.status === 'cancelled') {
+          clearInterval(progressInterval);
+          alert('Задача отменена.');
+          progressSection.classList.remove('visible');
+          currentTaskId = null;
+        }
+      } catch (err) {
+        console.error('Polling error', err);
+      }
+    }, 2000);
+  } catch (err) {
+    alert('Не удалось запустить задачу: ' + err.message);
+    progressSection.classList.remove('visible');
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', startRealTask);
+
+// ----- FAQ -----
+function toggleFaq(el) {
+  el.classList.toggle('open');
+}
+window.toggleFaq = toggleFaq;
+
+// ----- Анимации при скролле -----
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Инициализация первого появления (уже видимые блоки)
+document.querySelectorAll('.reveal').forEach(el => {
+  if (el.getBoundingClientRect().top < window.innerHeight) el.classList.add('visible');
+});
+</script>
+</body>
+</html>
